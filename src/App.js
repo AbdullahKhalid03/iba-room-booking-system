@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import './App.css';
 import LoginForm from './features/auth/components/LoginForm';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
+
 import backgroundImage from './assets/images/iba_background.jpeg';
 
 
@@ -23,7 +24,16 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <div 
+  className="App"
+  style={{
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    minHeight: '100vh'
+  }}
+>
+
       {currentView === 'login' && (
         <LoginForm onLogin={handleLogin} onUserTypeChange={setUserType} />
       )}
