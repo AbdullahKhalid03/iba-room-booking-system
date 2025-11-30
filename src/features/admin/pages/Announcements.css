@@ -1,0 +1,148 @@
+/* Reuse the existing student styles */
+.announcements {
+  width: 100%;
+}
+
+.announcements h2 {
+  color: #550707;
+  margin-bottom: 15px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.announcements > p {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 16px;
+}
+
+.announcements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+}
+
+.announcement-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.announcement-card:hover {
+  border-color: #550707;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.announcement-card h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.announcement-card p {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.announcement-date {
+  display: inline-block;
+  background: #550707;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+/* --------------------- */
+/* 📌 BUILDING INCHARGE ADD ANNOUNCEMENT FORM */
+/* --------------------- */
+
+.form-container {
+  background: white;
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 25px 30px;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
+}
+
+.form-title {
+  color: #550707;
+  font-size: 26px;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+/* Group wrapper */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+}
+
+/* Label styling */
+.form-group label {
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+/* Textbox styling */
+.input-box,
+.textarea-box {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.input-box:focus,
+.textarea-box:focus {
+  border-color: #550707;
+}
+
+/* Textarea sizing */
+.textarea-box {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* Submit button */
+.submit-btn {
+  margin-top: 10px;
+  background: #550707;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.submit-btn:hover {
+  background: #7a0a0a;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .form-container {
+    padding: 20px;
+  }
+
+  .announcement-card {
+    padding: 15px;
+  }
+}
