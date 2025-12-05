@@ -10,12 +10,13 @@ const ViewBooking = () => {
 
   const loadBookings = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/booking/all");
+      const response = await fetch("http://localhost:5000/api/manage-bookings/all");
       const result = await response.json();
 
       if (result.success && result.data.length > 0) {
-        // real DB bookings
-        setBookings(result.data);
+        // Sort by latest first
+        const sorted = result.data.sort((a, b) => b.BOOKING_ID - a.BOOKING_ID);
+        setBookings(sorted);
       } else {
         // HARD-CODED DUMMY BOOKINGS
         setBookings([
@@ -59,7 +60,6 @@ const ViewBooking = () => {
       }
     } catch (err) {
       console.log("Backend error → showing dummy bookings");
-      // Also fallback to hardcoded on backend error
       setBookings([
         {
           BOOKING_ID: 9991,
@@ -102,13 +102,46 @@ const ViewBooking = () => {
   };
 
   const updateStatus = async (id, status) => {
-    alert(`(HARD-CODED) Booking ${id} marked as ${status}`);
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/manage-bookings/update-status",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bookingId: id, status }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`Booking ${id} updated to ${status}`);
+        loadBookings(); // refresh list
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (err) {
+      alert("Server error updating booking");
+    }
   };
 
   return (
     <div className="booking-admin-container">
-      <h2 className="title">Booking Requests</h2>
-      <p className="subtitle">Approve or reject room booking requests</p>
+
+      {/* Heading Row with View All Button */}
+      <div className="booking-header-row">
+        <div>
+          <h2 className="title">Booking Requests</h2>
+          <p className="subtitle">Approve or reject room booking requests</p>
+        </div>
+
+        <button
+          className="view-all-btn"
+          onClick={() => window.location.href = "/admin/view-all-bookings"}
+        >
+          View All
+        </button>
+      </div>
 
       <div className="booking-card-list">
         {bookings.map((b) => (

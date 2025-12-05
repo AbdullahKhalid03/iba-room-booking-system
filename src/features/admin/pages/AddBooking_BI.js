@@ -13,18 +13,20 @@ const AddBooking_BI = () => {
     purpose: ""
   });
 
-  // Predefined slots
-  const timeSlots = [
-    "08:30-09:45",
-    "10:00-11:15",
-    "11:30-12:45",
-    "13:00-14:15",
-    "14:30-15:45",
-    "16:00-17:15",
-    "17:30-18:45"
-  ];
+  // 🔥 BI ERP from login
+  const BI_ERP = Number(localStorage.getItem("erp")) || 0;
 
-  // Load buildings from backend
+  // Time slot conversion to match backend
+  const slotMap = {
+    "08:30-09:45": { start: "08:30", end: "09:45" },
+    "10:00-11:15": { start: "10:00", end: "11:15" },
+    "11:30-12:45": { start: "11:30", end: "12:45" },
+    "1:00-2:15": { start: "13:00", end: "14:15" },
+    "2:30-3:45": { start: "14:30", end: "15:45" },
+    "4:00-5:15": { start: "16:00", end: "17:15" },
+    "5:30-6:45": { start: "17:30", end: "18:45" }
+  };
+
   useEffect(() => {
     fetch("http://localhost:5000/api/buildings")
       .then((res) => res.json())
@@ -32,14 +34,15 @@ const AddBooking_BI = () => {
       .catch((err) => console.log("Buildings Error:", err));
   }, []);
 
-  // STEP 1 — Search Available Rooms
+  // ------------------- SEARCH ROOMS -------------------
   const handleSearchRooms = async () => {
     if (!form.slot || !form.date || !form.buildingId) {
       alert("Please fill all fields");
       return;
     }
 
-    const [start, end] = form.slot.split("-");
+    const slot = slotMap[form.slot];
+    const { start, end } = slot;
 
     try {
       const response = await fetch(
@@ -60,23 +63,29 @@ const AddBooking_BI = () => {
     }
   };
 
-  // STEP 3 — Add Booking (BI Creates)
+  // ------------------- CREATE BOOKING -------------------
   const handleAddBooking = async () => {
-    const [start, end] = form.slot.split("-");
+    const slot = slotMap[form.slot];
+    if (!slot) return alert("Invalid slot");
+
+    const { start, end } = slot;
 
     try {
-      const response = await fetch("http://localhost:5000/api/booking/create-booking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          erp: 8888, // Building Incharge default ERP
-          roomId: form.roomId,
-          date: form.date,
-          startTime: start,
-          endTime: end,
-          purpose: form.purpose
-        })
-      });
+      const response = await fetch(
+        "http://localhost:5000/api/booking/create-booking",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            erp: BI_ERP,
+            roomId: Number(form.roomId),
+            date: form.date,
+            startTime: start,
+            endTime: end,
+            purpose: form.purpose
+          })
+        }
+      );
 
       const result = await response.json();
 
@@ -91,15 +100,14 @@ const AddBooking_BI = () => {
     }
   };
 
-  // ---------------- UI ---------------- //
+  // ------------------- UI -------------------
 
-  // STEP 1 — Filters
+   // STEP 1
   if (step === 1) {
     return (
       <div>
         <h2>Add Booking (Building Incharge)</h2>
 
-        {/* SLOT DROPDOWN */}
         <div className="form-group">
           <label>Slot</label>
           <select
@@ -108,7 +116,7 @@ const AddBooking_BI = () => {
             className="filter-select"
           >
             <option value="">Select Slot</option>
-            {timeSlots.map((slot) => (
+            {Object.keys(slotMap).map((slot) => (
               <option key={slot} value={slot}>
                 {slot}
               </option>
@@ -116,7 +124,6 @@ const AddBooking_BI = () => {
           </select>
         </div>
 
-        {/* DATE */}
         <div className="form-group">
           <label>Date</label>
           <input
@@ -125,13 +132,10 @@ const AddBooking_BI = () => {
           />
         </div>
 
-        {/* BUILDING */}
         <div className="form-group">
           <label>Building</label>
           <select
-            onChange={(e) =>
-              setForm({ ...form, buildingId: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, buildingId: e.target.value })}
           >
             <option value="">Select Building</option>
             {buildings.map((b) => (
@@ -148,197 +152,139 @@ const AddBooking_BI = () => {
       </div>
     );
   }
-// STEP 2 — Available Rooms (Updated with UI cards + BACK button + BOOK NOW)
-if (step === 2) {
-  return (
-    <div>
 
-      {/* BACK BUTTON */}
-      <button
-        onClick={() => setStep(1)}
-        style={{
-          padding: "8px 16px",
-          background: "#550707",
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          margin: "10px 0 20px 0",
-          cursor: "pointer",
-        }}
-      >
-        ← Back
-      </button>
+  // STEP 2: SMALL ROOM CARD GRID (3 in a row)
+  if (step === 2) {
+    return (
+      <div>
+        <button className="maroon-btn" onClick={() => setStep(1)}>
+          ← Back
+        </button>
 
-      <h2>Available Rooms</h2>
+        <h2>Available Rooms</h2>
 
-      {/* ROOMS GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: "20px",
-          marginTop: "20px",
-        }}
-      >
-        {availableRooms.map((room) => (
-          <div
-            key={room.ROOM_ID}
-            style={{
-              background: "white",
-              padding: "20px",
-              borderRadius: "10px",
-              border: "2px solid #e0e0e0",
-              transition: "0.25s",
-              boxShadow: "0px 3px 10px rgba(0,0,0,0.08)",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.borderColor = "#550707")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.borderColor = "#e0e0e0")
-            }
-          >
-            <h3
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "20px",
+            marginTop: "20px"
+          }}
+        >
+          {availableRooms.map((room) => (
+            <div
+              key={room.ROOM_ID}
               style={{
-                margin: "0 0 10px",
-                fontSize: "18px",
-                fontWeight: "600",
-                color: "#550707",
+                background: "white",
+                padding: "18px",
+                borderRadius: "10px",
+                border: "1px solid #ddd",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
               }}
             >
-              {room.ROOM_NAME}
-            </h3>
+              <h3 style={{ margin: "0 0 6px" }}>{room.ROOM_NAME}</h3>
+              <p><b>Type:</b> {room.ROOM_TYPE}</p>
+              <p><b>Building:</b> {room.BUILDING_NAME}</p>
 
-            <p style={{ margin: "5px 0", color: "#333" }}>
-              <b>Type:</b> {room.ROOM_TYPE}
-            </p>
-
-            <p style={{ margin: "5px 0", color: "#333" }}>
-              <b>Building:</b> {room.BUILDING_NAME}
-            </p>
-
-            <p style={{ margin: "5px 0", color: "#333" }}>
-              <b>Room ID:</b> {room.ROOM_ID}
-            </p>
-
-            {/* BOOK NOW BUTTON */}
-            <button
-              onClick={() => {
-                setForm({ ...form, roomId: room.ROOM_ID });
-                setStep(3);
-              }}
-              style={{
-                marginTop: "12px",
-                padding: "8px 16px",
-                background: "#550707",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-                width: "100%",
-              }}
-            >
-              Book Now
-            </button>
-          </div>
-        ))}
+              <button
+                className="maroon-btn"
+                style={{ width: "100%", marginTop: "10px" }}
+                onClick={() => {
+                  setForm({ ...form, roomId: room.ROOM_ID });
+                  setStep(3);
+                }}
+              >
+                Book Now
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
- // STEP 3 — Confirm Booking (Upgraded UI)
-if (step === 3) {
-  // Find selected room details
-  const selectedRoom = availableRooms.find(
-    (r) => r.ROOM_ID === form.roomId
-  );
 
-  return (
-    <div>
-      {/* BACK BUTTON */}
-      <button
-        onClick={() => setStep(2)}
-        style={{
-          padding: "8px 16px",
-          background: "#550707",
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          margin: "10px 0 20px 0",
-          cursor: "pointer",
-        }}
-      >
-        ← Back
-      </button>
+  // STEP 3: POPUP BOX (Like Student Version)
+  if (step === 3) {
+    const selectedRoom = availableRooms.find(
+      (r) => r.ROOM_ID === form.roomId
+    );
 
-      <h2>Confirm Booking</h2>
-
-      {/* CARD */}
+    return (
       <div
         style={{
-          background: "white",
-          padding: "25px",
-          borderRadius: "10px",
-          border: "2px solid #e0e0e0",
-          boxShadow: "0px 3px 10px rgba(0,0,0,0.08)",
-          maxWidth: "450px",
-          marginTop: "20px",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.4)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10
         }}
       >
-        <h3 style={{ marginBottom: "15px", color: "#550707" }}>
-          Booking Details
-        </h3>
+        <div
+          style={{
+            background: "white",
+            padding: "30px",
+            borderRadius: "10px",
+            width: "90%",
+            maxWidth: "500px",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.25)"
+          }}
+        >
+          <h2>Confirm Booking</h2>
 
-        <p><b>Room:</b> {selectedRoom?.ROOM_NAME}</p>
-        <p><b>Room ID:</b> {form.roomId}</p>
-        <p><b>Building:</b> {selectedRoom?.BUILDING_NAME}</p>
-        <p><b>Date:</b> {form.date}</p>
-        <p><b>Slot:</b> {form.slot}</p>
+          <p><b>Room:</b> {selectedRoom?.ROOM_NAME}</p>
+          <p><b>Building:</b> {selectedRoom?.BUILDING_NAME}</p>
+          <p><b>Date:</b> {form.date}</p>
+          <p><b>Time:</b> {form.slot}</p>
+          <p><b>ERP:</b> {BI_ERP}</p>
 
-        <div className="form-group" style={{ marginTop: "15px" }}>
-          <label><b>Purpose</b></label>
           <textarea
-            placeholder="Enter purpose..."
+            placeholder="Describe the purpose..."
             style={{
               width: "100%",
               height: "80px",
+              marginTop: "10px",
               padding: "10px",
               borderRadius: "6px",
-              border: "1px solid #ccc",
-              fontSize: "14px",
+              border: "1px solid #ccc"
             }}
             onChange={(e) =>
               setForm({ ...form, purpose: e.target.value })
             }
-          />
+          ></textarea>
+
+          <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+            <button
+              className="maroon-btn"
+              style={{ flex: 1 }}
+              onClick={handleAddBooking}
+            >
+              Confirm Booking
+            </button>
+
+            <button
+              style={{
+                flex: 1,
+                background: "#555",
+                color: "white",
+                border: "none",
+                padding: "10px",
+                borderRadius: "6px"
+              }}
+              onClick={() => setStep(2)}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-
-        {/* FINAL BOOK BUTTON */}
-        <button
-          className="maroon-btn"
-          style={{
-            marginTop: "15px",
-            width: "100%",
-            padding: "10px",
-            fontSize: "16px",
-            fontWeight: "600",
-            background: "#550707",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-          }}
-          onClick={handleAddBooking}
-        >
-          Confirm Booking
-        </button>
       </div>
-    </div>
-  );
-}
-
+    );
+  }
 };
 
 export default AddBooking_BI;

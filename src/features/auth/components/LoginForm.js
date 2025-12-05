@@ -131,6 +131,11 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
         if (onLogin) {
           onLogin(result.userType, result.role, result.user); // Pass user data
         }
+        // Save ERP to localStorage for bookings
+localStorage.setItem("erp", result.user.erp);
+localStorage.setItem("name", result.user.name);
+localStorage.setItem("role", result.role);
+
       } else {
         alert(`❌ ${result.error || 'Login failed'}`);
       }
