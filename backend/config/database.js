@@ -2,9 +2,9 @@ const oracledb = require('oracledb');
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 
 const dbConfig = {
-  user: 'c##hrtester',  // ← Use the correct username
-  password: '123',  // ← Use the correct password
-  connectString: 'localhost:1521/iba'  // ← Use port 1521, not 1512
+  user: 'c##room',  // ← Use the correct username
+  password: 'Room123',  // ← Use the correct password
+  connectString: 'localhost:1521/XE'  // ← Use port 1521, not 1512
 };
 
 async function getConnection() {
