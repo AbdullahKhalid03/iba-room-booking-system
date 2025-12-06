@@ -1,4 +1,5 @@
-// routes/auth.js
+// src/routes/auth.js
+
 const express = require('express');
 const router = express.Router();
 const oracledb = require('oracledb');
@@ -13,10 +14,11 @@ const isValidEmailDomain = (email) => {
 };
 
 // ------------------------------
-// FORMAT ROLE EXACTLY FOR FRONTEND
+// FORMAT ROLE FOR FRONTEND
 // ------------------------------
 const formatRole = (role) => {
   if (!role) return null;
+
   const r = role.toLowerCase();
 
   if (r === "programoffice") return "ProgramOffice";
@@ -31,6 +33,7 @@ const formatRole = (role) => {
 // ------------------------------
 router.post('/login', async (req, res) => {
   let connection;
+
   try {
     const { email, password, userType } = req.body;
 
@@ -43,11 +46,12 @@ router.post('/login', async (req, res) => {
     }
 
     connection = await getConnection();
-    console.log("Login attempt:", { email, userType });
+    console.log("\n=== LOGIN ATTEMPT ===");
+    console.log({ email, userType });
 
-    // --------------------------
-    // ADMIN LOGIN
-    // --------------------------
+    // ====================================================
+    // ADMIN LOGIN (Program Office + BI)
+    // ====================================================
     if (userType === "admin") {
       const result = await connection.execute(
         `BEGIN
@@ -60,32 +64,52 @@ router.post('/login', async (req, res) => {
               :name,
               :message
             );
-         END;`,
+        END;`,
         {
           identifier: email,
-          password: password,
+          password,
           success: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
           role: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
           erp: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-          name: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 100 },
+          name: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 200 },
           message: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 300 }
         }
       );
 
-      console.log("Admin login result:", result.outBinds);
+      console.log("ADMIN LOGIN RESULT:", result.outBinds);
 
       if (result.outBinds.success === 1) {
         const correctedRole = formatRole(result.outBinds.role);
+        const erp = result.outBinds.erp;
+        const name = result.outBinds.name;
+
+        let userObj = null;
+
+        // ---------- Building Incharge ----------
+        if (correctedRole === "BuildingIncharge") {
+          userObj = {
+            INCHARGE_ID: erp,   // IMPORTANT: used in frontend BI history
+            NAME: name,
+            EMAIL: email,
+            ROLE: correctedRole
+          };
+        }
+
+        // ---------- Program Office ----------
+        else if (correctedRole === "ProgramOffice") {
+          userObj = {
+            PROGRAM_OFFICE_ID: erp,  // IMPORTANT: used in PO functions
+            NAME: name,
+            EMAIL: email,
+            ROLE: correctedRole
+          };
+        }
 
         return res.json({
           success: true,
           userType: "admin",
           role: correctedRole,
-          user: {
-            erp: result.outBinds.erp,
-            name: result.outBinds.name,
-            email
-          },
+          user: userObj,
           message: "Admin login successful"
         });
       }
@@ -96,9 +120,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // --------------------------
+    // ====================================================
     // STUDENT LOGIN
-    // --------------------------
+    // ====================================================
     if (userType === "student") {
       const studentResult = await connection.execute(
         `BEGIN
@@ -112,10 +136,10 @@ router.post('/login', async (req, res) => {
               :intake_year,
               :message
             );
-         END;`,
+        END;`,
         {
           identifier: email,
-          password: password,
+          password,
           success: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
           erp: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
           name: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 100 },
@@ -125,9 +149,8 @@ router.post('/login', async (req, res) => {
         }
       );
 
-      console.log("Student login result:", studentResult.outBinds);
+      console.log("STUDENT RESULT:", studentResult.outBinds);
 
-      // SUCCESS CASE
       if (studentResult.outBinds.success === 1) {
         return res.json({
           success: true,
@@ -136,7 +159,7 @@ router.post('/login', async (req, res) => {
           user: {
             erp: studentResult.outBinds.erp,
             name: studentResult.outBinds.name,
-            email: email,
+            email,
             program: studentResult.outBinds.program,
             intakeYear: studentResult.outBinds.intake_year
           },
@@ -144,7 +167,7 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      // FAILED → CHECK IF STUDENT EXISTS
+      // Check if student exists
       const userCheck = await connection.execute(
         `SELECT COUNT(*) AS CNT FROM User_Table WHERE email = :email AND role = 'Student'`,
         { email }
@@ -158,26 +181,11 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // If userType is neither admin nor student
-    return res.status(400).json({
-      success: false,
-      error: "Invalid user type. Must be 'admin' or 'student'"
-    });
-
-  } catch (error) {
-    console.error('Login error:', error.message);
-    return res.status(500).json({ 
-      success: false,
-      error: 'Login failed. Please try again.' 
-    });
+  } catch (err) {
+    console.error("❌ Login error:", err);
+    return res.status(500).json({ success: false, error: err.message });
   } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error('Connection close error:', err.message);
-      }
-    }
+    if (connection) await connection.close().catch(() => {});
   }
 });
 

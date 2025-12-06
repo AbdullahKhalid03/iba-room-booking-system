@@ -5,6 +5,8 @@ const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/booking');
 const announcementsRoutes = require('./routes/announcements');
 const roomRoutes = require('./routes/rooms');
+const reservationRoutes = require('./routes/reservation');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,6 +21,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/reservation', reservationRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {
