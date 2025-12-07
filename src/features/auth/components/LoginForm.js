@@ -133,6 +133,7 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
 
         const result = await response.json();
         console.log("LOGIN RESPONSE:", result);
+        console.log("Student ERP in backendUser:", result.user?.erp); // Debug line
 
         if (response.ok && result.success) {
           const role = result.role;          // ProgramOffice / BuildingIncharge
@@ -165,11 +166,23 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
             userToStore = backendUser;
           }
 
-          // SAVE TO LOCAL STORAGE
-          localStorage.setItem("user", JSON.stringify(userToStore));
-          localStorage.setItem("role", role);
+          // ✅ FIXED: Store ERP in localStorage correctly
+          if (role === "BuildingIncharge") {
+            localStorage.setItem("erp", backendUser.INCHARGE_ID);
+          } 
+          else if (role === "ProgramOffice") {
+            localStorage.setItem("erp", backendUser.PROGRAM_OFFICE_ID);
+          } 
+          else {
+            // For students - use backendUser.erp instead of result.erp
+            localStorage.setItem("erp", backendUser.erp);
+          }
 
+          // Also store the full user object
+          localStorage.setItem("user", JSON.stringify(userToStore));
+          
           console.log("SAVED USER =", userToStore);
+          console.log("SAVED ERP =", backendUser.erp || backendUser.INCHARGE_ID || backendUser.PROGRAM_OFFICE_ID);
 
           // call parent
           if (onLogin) {

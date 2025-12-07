@@ -1,19 +1,19 @@
 // src/features/student/pages/StudentDashboard.js
 import React, { useState } from 'react';
 import './StudentDashboard.css';
+
 import ViewAllRooms from '../components/ViewAllRooms';
 import ClassroomBooking from '../components/ClassroomBooking';
 import BreakoutBooking from '../components/BreakoutBooking';
 import Announcements from '../components/Announcements';
 import BookingHistory from '../components/BookingHistory';
+import Notifications from '../components/Notifications';
 
 const StudentDashboard = ({ onLogout, userData }) => {
   const [activeView, setActiveView] = useState('viewAllRooms');
 
-  // Debug: Check what userData contains
   console.log('UserData in StudentDashboard:', userData);
 
-  // Use actual user data from login with proper fallbacks
   const userInfo = userData ? {
     name: userData.name || 'Student',
     program: userData.program || 'Not Set', 
@@ -28,16 +28,17 @@ const StudentDashboard = ({ onLogout, userData }) => {
     email: ''
   };
 
-  // Ensure ERP is properly formatted
   const displayERP = userInfo.erp && userInfo.erp !== 'Not Set' ? userInfo.erp : 'Not Set';
-  const displayProgram = userInfo.program && userInfo.program !== 'Not Set' ? userInfo.program : 'Not Set';
-  const displayIntakeYear = userInfo.intakeYear && userInfo.intakeYear !== 'Not Set' ? userInfo.intakeYear : 'Not Set';
+  const displayProgram = userInfo.program || 'Not Set';
+  const displayIntakeYear = userInfo.intakeYear || 'Not Set';
 
+  // ✅ SIMPLE TEXT-ONLY NAVIGATION TABS
   const navigationItems = [
     { id: 'viewAllRooms', label: 'View All Rooms' },
     { id: 'classroom', label: 'Classroom Booking' },
     { id: 'breakout', label: 'Breakout Room' },
     { id: 'announcements', label: 'Announcements' },
+    { id: 'notifications', label: 'Notifications' },   // ← JUST TEXT TAB
     { id: 'bookingHistory', label: 'Booking History' }
   ];
 
@@ -47,40 +48,35 @@ const StudentDashboard = ({ onLogout, userData }) => {
       'classroom': { title: 'Classroom Booking', subtitle: 'Reserve classrooms for academic purposes' },
       'breakout': { title: 'Breakout Room Booking', subtitle: 'Book breakout rooms for group discussions' },
       'announcements': { title: 'Announcements', subtitle: 'Latest university updates and notices' },
+      'notifications': { title: 'Notifications', subtitle: 'Your latest activity updates' },
       'bookingHistory': { title: 'Booking History', subtitle: 'View and manage your reservations' }
     };
     return info[activeView] || { title: 'Student Dashboard', subtitle: 'Manage your room bookings' };
   };
 
   const renderMainContent = () => {
-    // Pass the actual ERP number to booking components
-    const studentERP = userInfo.erp && userInfo.erp !== 'Not Set' ? userInfo.erp : null;
-    
-    console.log('Passing ERP to components:', studentERP); // Debug log
-    
+    const studentERP = userInfo.erp !== 'Not Set' ? userInfo.erp : null;
+
     switch (activeView) {
       case 'viewAllRooms': return <ViewAllRooms studentERP={studentERP} />;
       case 'classroom': return <ClassroomBooking studentERP={studentERP} />;
       case 'breakout': return <BreakoutBooking studentERP={studentERP} />;
       case 'announcements': return <Announcements />;
+      case 'notifications': return <Notifications studentERP={studentERP} />;
       case 'bookingHistory': return <BookingHistory studentERP={studentERP} />;
       default: return <ViewAllRooms studentERP={studentERP} />;
     }
   };
 
   const headerInfo = getHeaderInfo();
-  // Add this inside your StudentDashboard component, before the return statement
-console.log('=== DEBUG INFO ===');
-console.log('userData prop:', userData);
-console.log('userInfo object:', userInfo);
-console.log('ERP value:', userInfo.erp);
-console.log('ERP type:', typeof userInfo.erp);
-console.log('==================');
+
   return (
     <div className="student-dashboard">
-      {/* Left Sidebar - Navigation */}
+
+      {/* Sidebar */}
       <aside className="navigation-sidebar">
-        {/* User Info Section */}
+
+        {/* User Info */}
         <div className="user-info-section">
           <div className="profile-circle">
             <span className="profile-initial">{userInfo.name.charAt(0)}</span>
@@ -103,29 +99,29 @@ console.log('==================');
           ))}
         </nav>
 
-        {/* Logout Section */}
+        {/* Logout */}
         <div className="logout-section">
           <button onClick={onLogout} className="sidebar-logout-btn">
             Logout
           </button>
         </div>
+
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="dashboard-main">
-        {/* Header */}
         <header className="dashboard-header">
           <h1 className="header-title">{headerInfo.title}</h1>
           <p className="header-subtitle">{headerInfo.subtitle}</p>
         </header>
 
-        {/* Content Area */}
         <div className="content-area-full">
           <div className="content-panel-full">
             {renderMainContent()}
           </div>
         </div>
       </main>
+
     </div>
   );
 };

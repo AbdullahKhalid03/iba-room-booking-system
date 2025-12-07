@@ -1,0 +1,386 @@
+.notifications-container {
+  padding: 20px;
+  max-width: 100%;
+}
+
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.header-left h2 {
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 24px;
+}
+
+.header-left p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.unread-badge {
+  display: inline-block;
+  background: #800000;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.mark-all-btn {
+  padding: 8px 16px;
+  background: #666;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.mark-all-btn:hover {
+  background: #555;
+}
+
+.refresh-btn {
+  padding: 8px 16px;
+  background: #800000;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #600000;
+}
+
+.refresh-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Stats */
+.notifications-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.stat-card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-left: 4px solid #ddd;
+}
+
+.stat-card.total {
+  border-left-color: #333;
+}
+
+.stat-card.approved {
+  border-left-color: #28a745;
+}
+
+.stat-card.rejected {
+  border-left-color: #dc3545;
+}
+
+.stat-card.unread {
+  border-left-color: #800000;
+}
+
+.stat-number {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  text-transform: uppercase;
+}
+
+/* Loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f0f0f0;
+  border-top-color: #800000;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.no-notifications {
+  text-align: center;
+  padding: 60px 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+}
+
+.empty-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 20px;
+  color: #ccc;
+}
+
+.empty-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.no-notifications h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.no-notifications p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Notifications List */
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.notification-card {
+  display: flex;
+  gap: 15px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
+}
+
+.notification-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.notification-card.unread {
+  background: #fffef5;
+  border-left-color: #800000;
+}
+
+.notification-card.approved {
+  border-left-color: #28a745;
+}
+
+.notification-card.rejected {
+  border-left-color: #dc3545;
+}
+
+/* Status Icon */
+.status-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.status-icon.approved {
+  background: #e8f5e9;
+  color: #28a745;
+}
+
+.status-icon.rejected {
+  background: #ffebee;
+  color: #dc3545;
+}
+
+/* Notification Content */
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.notification-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.new-badge {
+  background: #800000;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.notification-message {
+  margin: 0 0 15px 0;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Booking Details */
+.booking-details {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  width: 100px;
+  min-width: 100px;
+  font-weight: 600;
+  color: #666;
+  font-size: 13px;
+}
+
+.detail-value {
+  flex: 1;
+  color: #333;
+  font-size: 13px;
+}
+
+.detail-value.room-type {
+  text-transform: capitalize;
+}
+
+/* Notification Footer */
+.notification-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #888;
+}
+
+.status-tag {
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-tag.approved {
+  background: #e8f5e9;
+  color: #28a745;
+}
+
+.status-tag.rejected {
+  background: #ffebee;
+  color: #dc3545;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .notifications-header {
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .notification-card {
+    flex-direction: column;
+  }
+
+  .status-icon {
+    align-self: flex-start;
+  }
+
+  .detail-row {
+    flex-direction: column;
+  }
+
+  .detail-label {
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .notifications-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

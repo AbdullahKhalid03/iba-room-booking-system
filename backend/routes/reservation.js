@@ -39,10 +39,10 @@ router.get("/po/history", async (req, res) => {
 ============================================================ */
 router.get("/bi/history", async (req, res) => {
   let connection;
-  const erp = Number(req.query.erp);  // INCHARGE ERP (30001, 30002, etc.)
+  const inchargeId = Number(req.query.erp);  // FIXED HERE
 
-  if (!erp) {
-    return res.json({ success: false, error: "Missing ERP parameter" });
+  if (!inchargeId) {
+    return res.json({ success: false, error: "Missing Building Incharge ERP" });
   }
 
   try {
@@ -53,7 +53,7 @@ router.get("/bi/history", async (req, res) => {
           ShowReservationHistoryForBI(:p_incharge_id, :cursor); 
        END;`,
       {
-        p_incharge_id: erp,
+        p_incharge_id: inchargeId,
         cursor: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR }
       }
     );
@@ -68,7 +68,6 @@ router.get("/bi/history", async (req, res) => {
     if (connection) await connection.close();
   }
 });
-
 /* ============================================================
    3) STUDENT — VIEW OWN RESERVATION HISTORY
 ============================================================ */

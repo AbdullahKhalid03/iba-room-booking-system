@@ -6,7 +6,8 @@ const ViewBooking = () => {
   const [loading, setLoading] = useState(false);
   
   // Building Incharge's ERP - this should come from authentication/session
-  const buildingInchargeERP = "30001"; // Replace with actual ERP from auth context
+  const buildingInchargeERP = localStorage.getItem("erp");
+ // Replace with actual ERP from auth context
 
   useEffect(() => {
     loadBookings();
