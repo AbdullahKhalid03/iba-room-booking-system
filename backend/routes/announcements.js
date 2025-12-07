@@ -209,4 +209,234 @@ router.get('/buildings', async (req, res) => {
   }
 });
 
+router.get('/incharge/:erp', async (req, res) => {
+  let connection;
+  try {
+    const { erp } = req.params;
+    
+    if (!erp) {
+      return res.status(400).json({
+        success: false,
+        error: 'ERP is required'
+      });
+    }
+
+    connection = await getConnection();
+    
+    const result = await connection.execute(
+      `BEGIN
+         ShowAnnouncementsByUser(:erp, :result);
+       END;`,
+      {
+        erp: parseInt(erp),
+        result: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
+      }
+    );
+
+    const resultSet = result.outBinds.result;
+    if (!resultSet) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+    
+    const announcements = await resultSet.getRows();
+    await resultSet.close();
+    
+    // DEBUG: Log raw data
+    console.log('🔍 Raw announcements from Oracle:', announcements);
+    
+    // FIX: Handle dates properly - Oracle returns dates as special objects
+    const formattedAnnouncements = announcements.map((row, index) => {
+      console.log(`🔍 Row ${index}:`, row);
+      
+      // row is an array: [id, title, description, date_posted, created_date]
+      if (Array.isArray(row) && row.length >= 5) {
+        let date_posted = null;
+        let created_date = null;
+        
+        // Check if date is Oracle Date object
+        if (row[3] && typeof row[3] === 'object' && row[3].getMonth) {
+          // It's already a Date object
+          date_posted = row[3];
+        } else if (row[3]) {
+          // Try to parse as string
+          try {
+            date_posted = new Date(row[3]);
+          } catch (err) {
+            console.log('❌ Could not parse date_posted:', row[3]);
+            date_posted = new Date(); // Fallback
+          }
+        }
+        
+        // Same for created_date
+        if (row[4] && typeof row[4] === 'object' && row[4].getMonth) {
+          created_date = row[4];
+        } else if (row[4]) {
+          try {
+            created_date = new Date(row[4]);
+          } catch (err) {
+            created_date = null;
+          }
+        }
+        
+        return {
+          announcement_id: row[0] || 0,
+          title: row[1] || 'No Title',
+          description: row[2] || 'No Description',
+          date_posted: date_posted ? date_posted.toISOString() : new Date().toISOString(),
+          created_date: created_date ? created_date.toISOString() : null
+        };
+      }
+      
+      // Fallback for unexpected format
+      return {
+        announcement_id: 0,
+        title: 'Error loading',
+        description: 'Could not parse announcement data',
+        date_posted: new Date().toISOString(),
+        created_date: null
+      };
+    });
+    
+    console.log('✅ Formatted announcements:', formattedAnnouncements);
+    
+    res.json({
+      success: true,
+      data: formattedAnnouncements
+    });
+  } catch (error) {
+    console.error('Error fetching incharge announcements:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }
+});
+// Post new announcement (Building Incharge only)
+router.post('/post', async (req, res) => {
+  let connection;
+  try {
+    const { erp, title, description } = req.body;
+    
+    if (!erp || !title || !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'ERP, title and description are required'
+      });
+    }
+
+    connection = await getConnection();
+    
+    const result = await connection.execute(
+      `BEGIN
+         PostAnnouncement(:erp, :title, :description, :success, :message);
+       END;`,
+      {
+        erp: parseInt(erp),
+        title,
+        description,
+        success: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+        message: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 500 }
+      }
+    );
+
+    const { success, message } = result.outBinds;
+    
+    if (success === 1) {
+      res.json({
+        success: true,
+        message
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: message
+      });
+    }
+  } catch (error) {
+    console.error('Error posting announcement:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }
+});
+
+// Delete announcement
+router.post('/delete', async (req, res) => {
+  let connection;
+  try {
+    const { announcement_id, erp } = req.body;
+    
+    if (!announcement_id || !erp) {
+      return res.status(400).json({
+        success: false,
+        error: 'Announcement ID and ERP are required'
+      });
+    }
+
+    connection = await getConnection();
+    
+    const result = await connection.execute(
+      `BEGIN
+         DeleteAnnouncement(:announcement_id, :erp, :success, :message);
+       END;`,
+      {
+        announcement_id: parseInt(announcement_id),
+        erp: parseInt(erp),
+        success: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+        message: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 500 }
+      }
+    );
+
+    const { success, message } = result.outBinds;
+    
+    if (success === 1) {
+      res.json({
+        success: true,
+        message
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: message
+      });
+    }
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }
+});
+
+
+
 module.exports = router;

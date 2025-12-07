@@ -41,10 +41,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, error: "Email, password & userType are required." });
     }
 
-    if (!isValidEmailDomain(email)) {
-      return res.status(400).json({ success: false, error: "Use @iba.edu.pk or @khi.iba.edu.pk email." });
-    }
-
     connection = await getConnection();
     console.log("\n=== LOGIN ATTEMPT ===");
     console.log({ email, userType });

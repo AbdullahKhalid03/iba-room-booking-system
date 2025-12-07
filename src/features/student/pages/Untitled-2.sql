@@ -272,21 +272,14 @@ AS
     v_email_exists NUMBER;
     v_phone_exists NUMBER;
 BEGIN
-    /*
-    PURPOSE: Start student registration with OTP
-    CALLED: After CheckUserExists confirms user doesn't exist
-    */
-    
     p_success := 0;
     p_message := '';
     
-    -- Validate email domain
     IF NOT (p_email LIKE '%@khi.iba.edu.pk') THEN
         p_message := 'Only IBA student emails (@khi.iba.edu.pk) allowed';
         RETURN;
     END IF;
     
-    -- Check duplicate ERP
     SELECT COUNT(*) INTO v_erp_exists
     FROM User_Table
     WHERE erp = p_erp;
@@ -296,7 +289,6 @@ BEGIN
         RETURN;
     END IF;
     
-    -- Check duplicate email
     SELECT COUNT(*) INTO v_email_exists
     FROM User_Table
     WHERE email = p_email;
@@ -306,7 +298,6 @@ BEGIN
         RETURN;
     END IF;
     
-    -- Check duplicate phone
     SELECT COUNT(*) INTO v_phone_exists
     FROM User_Table
     WHERE phone_number = p_phonenumber;
@@ -316,14 +307,11 @@ BEGIN
         RETURN;
     END IF;
     
-    -- Generate 6-digit OTP
     p_code := LPAD(TRUNC(DBMS_RANDOM.VALUE(100000, 999999)), 6, '0');
     
-    -- Remove old pending registration if exists
     DELETE FROM PendingRegistration
     WHERE email = p_email OR erp = p_erp OR phone_number = p_phonenumber;
     
-    -- Insert into pending table
     INSERT INTO PendingRegistration (
         email, erp, name, user_password, phone_number, role,
         verification_code, code_expiry
@@ -355,39 +343,28 @@ AS
     v_pending_exists NUMBER;
     v_email_domain VARCHAR2(50);
 BEGIN
-    /*
-    PURPOSE: Resend OTP to email for pending registration
-    CALLED: When user doesn't receive OTP email or it expired
-    NOTE: Only works with email since OTPs are sent via email
-    */
-    
     p_success := 0;
     p_new_code := NULL;
     p_message := '';
     
-    -- Validate email format
     IF p_email IS NULL OR LENGTH(p_email) < 10 THEN
         p_message := 'Valid email address is required';
         RETURN;
     END IF;
     
-    -- Validate it's an IBA email
     v_email_domain := SUBSTR(p_email, INSTR(p_email, '@'));
     IF v_email_domain != '@khi.iba.edu.pk' THEN
         p_message := 'Only IBA student emails (@khi.iba.edu.pk) allowed';
         RETURN;
     END IF;
     
-    -- Check if pending registration exists for this email
     SELECT COUNT(*) INTO v_pending_exists
     FROM PendingRegistration
     WHERE email = p_email;
     
     IF v_pending_exists > 0 THEN
-        -- Generate new 6-digit OTP
         p_new_code := LPAD(TRUNC(DBMS_RANDOM.VALUE(100000, 999999)), 6, '0');
         
-        -- Update with new code and expiry (10 minutes from now)
         UPDATE PendingRegistration
         SET verification_code = p_new_code,
             code_expiry = SYSTIMESTAMP + INTERVAL '10' MINUTE
@@ -422,16 +399,9 @@ CREATE OR REPLACE PROCEDURE VerifyRegistration(
 AS
     v_pending_record PendingRegistration%ROWTYPE;
     v_user_exists NUMBER;
-BEGIN
-    /*
-    PURPOSE: Complete registration by verifying OTP
-    CALLED: After user receives and enters OTP
-    */
-    
+BEGIN 
     p_success := 0;
     p_message := '';
-    
-    -- Check if OTP is valid and not expired
     BEGIN
         SELECT * INTO v_pending_record
         FROM PendingRegistration
@@ -454,7 +424,6 @@ BEGIN
             RETURN;
     END;
     
-    -- Check if user already exists
     SELECT COUNT(*) INTO v_user_exists
     FROM User_Table
     WHERE erp = v_pending_record.erp OR email = p_email;
@@ -466,10 +435,8 @@ BEGIN
         RETURN;
     END IF;
     
-    -- Start transaction
     SAVEPOINT before_verification;
     
-    -- Insert into User_Table
     INSERT INTO User_Table (
         ERP, name, email, user_password, role, phone_number,
         verification_code, code_expiry
@@ -484,7 +451,6 @@ BEGIN
         NULL
     );
     
-    -- Insert into Student table (using provided program/intake_year)
     INSERT INTO Student (ERP, program, intake_year)
     VALUES (
         v_pending_record.erp,
@@ -492,7 +458,6 @@ BEGIN
         p_intake_year
     );
     
-    -- Remove from pending
     DELETE FROM PendingRegistration WHERE email = p_email;
     
     COMMIT;
@@ -521,11 +486,6 @@ CREATE OR REPLACE PROCEDURE StudentLogin(
 AS
     v_is_email BOOLEAN;
 BEGIN
-    /*
-    PURPOSE: Authenticate student user
-    CALLED: Student login attempt
-    */
-    
     p_success := 0;
     p_erp := NULL;
     p_name := NULL;
@@ -533,11 +493,9 @@ BEGIN
     p_intake_year := NULL;
     p_message := '';
     
-    -- Determine identifier type
     v_is_email := INSTR(p_identifier, '@') > 0;
     
     IF v_is_email THEN
-        -- Login with email
         BEGIN
             SELECT u.erp, u.name, s.program, s.intake_year
             INTO p_erp, p_name, p_program, p_intake_year
@@ -557,7 +515,6 @@ BEGIN
                 p_message := 'System error: Multiple accounts found';
         END;
     ELSE
-        -- Login with phone
         BEGIN
             SELECT u.erp, u.name, s.program, s.intake_year
             INTO p_erp, p_name, p_program, p_intake_year
@@ -585,7 +542,7 @@ END StudentLogin;
 
 CREATE OR REPLACE PROCEDURE AdminLogin(
     p_identifier IN VARCHAR2,  -- Can be email OR phone
-    p_password   IN VARCHAR2,
+    p_password   IN User_Table.user_password%TYPE,
     p_success    OUT NUMBER,
     p_role       OUT VARCHAR2,
     p_erp        OUT NUMBER,
@@ -595,11 +552,7 @@ CREATE OR REPLACE PROCEDURE AdminLogin(
 AS
     v_is_email BOOLEAN;
 BEGIN
-    /*
-    PURPOSE: Authenticate admin users (ProgramOffice or BuildingIncharge)
-    CALLED: Admin login attempt
-    */
-    
+
     p_success := 0;
     p_role := NULL;
     p_erp := NULL;
@@ -653,11 +606,6 @@ CREATE OR REPLACE PROCEDURE CleanExpiredRegistrations
 AS
     v_deleted_count NUMBER;
 BEGIN
-    /*
-    PURPOSE: Clean up expired pending registrations
-    CALLED: Scheduled job (daily/weekly)
-    */
-    
     DELETE FROM PendingRegistration
     WHERE code_expiry < SYSTIMESTAMP;
     
@@ -665,7 +613,6 @@ BEGIN
     
     COMMIT;
     
-    -- Optional: Log cleanup
     DBMS_OUTPUT.PUT_LINE('Cleaned ' || v_deleted_count || ' expired registrations');
     
 EXCEPTION
@@ -1288,135 +1235,135 @@ END;
 /
 
 
-CREATE OR REPLACE PROCEDURE ViewRoomsByType(
-    p_room_type IN Room.room_type%TYPE,
-    p_result    OUT SYS_REFCURSOR
-)
-AS
-BEGIN
-    /*
-    PURPOSE: View all rooms of a specific type
-    INPUT: Room type (CLASSROOM/BREAKOUT)
-    OUTPUT: All rooms matching the type
-    */
+-- CREATE OR REPLACE PROCEDURE ViewRoomsByType(
+--     p_room_type IN Room.room_type%TYPE,
+--     p_result    OUT SYS_REFCURSOR
+-- )
+-- AS
+-- BEGIN
+--     /*
+--     PURPOSE: View all rooms of a specific type
+--     INPUT: Room type (CLASSROOM/BREAKOUT)
+--     OUTPUT: All rooms matching the type
+--     */
     
-    OPEN p_result FOR
-        SELECT 
-            r.room_id,
-            r.room_name,
-            r.room_type,
-            b.building_id,
-            b.building_name
-        FROM Room r
-        JOIN Building b ON r.building_id = b.building_id
-        WHERE r.room_type = p_room_type
-        ORDER BY b.building_name, r.room_name;
+--     OPEN p_result FOR
+--         SELECT 
+--             r.room_id,
+--             r.room_name,
+--             r.room_type,
+--             b.building_id,
+--             b.building_name
+--         FROM Room r
+--         JOIN Building b ON r.building_id = b.building_id
+--         WHERE r.room_type = p_room_type
+--         ORDER BY b.building_name, r.room_name;
         
-END ViewRoomsByType;
-/
+-- END ViewRoomsByType;
+-- /
 
-CREATE OR REPLACE PROCEDURE ViewRoomsByTypeBuilding(
-    p_room_type   IN Room.room_type%TYPE,
-    p_building_id IN Building.building_id%TYPE,
-    p_result      OUT SYS_REFCURSOR
-)
-AS
-    v_building_exists NUMBER;
-BEGIN
-    /*
-    PURPOSE: View rooms of specific type in specific building
-    INPUT: Room type + Building ID
-    OUTPUT: Rooms matching both criteria
-    */
+-- CREATE OR REPLACE PROCEDURE ViewRoomsByTypeBuilding(
+--     p_room_type   IN Room.room_type%TYPE,
+--     p_building_id IN Building.building_id%TYPE,
+--     p_result      OUT SYS_REFCURSOR
+-- )
+-- AS
+--     v_building_exists NUMBER;
+-- BEGIN
+--     /*
+--     PURPOSE: View rooms of specific type in specific building
+--     INPUT: Room type + Building ID
+--     OUTPUT: Rooms matching both criteria
+--     */
     
-    -- Check if building exists
-    SELECT COUNT(*) INTO v_building_exists
-    FROM Building
-    WHERE building_id = p_building_id;
+--     -- Check if building exists
+--     SELECT COUNT(*) INTO v_building_exists
+--     FROM Building
+--     WHERE building_id = p_building_id;
     
-    IF v_building_exists = 0 THEN
-        -- Return empty cursor if building doesn't exist
-        OPEN p_result FOR
-            SELECT 
-                r.room_id,
-                r.room_name,
-                r.room_type,
-                b.building_id,
-                b.building_name
-            FROM Room r
-            JOIN Building b ON r.building_id = b.building_id
-            WHERE 1 = 0; -- Always false
-        RETURN;
-    END IF;
+--     IF v_building_exists = 0 THEN
+--         -- Return empty cursor if building doesn't exist
+--         OPEN p_result FOR
+--             SELECT 
+--                 r.room_id,
+--                 r.room_name,
+--                 r.room_type,
+--                 b.building_id,
+--                 b.building_name
+--             FROM Room r
+--             JOIN Building b ON r.building_id = b.building_id
+--             WHERE 1 = 0; -- Always false
+--         RETURN;
+--     END IF;
     
-    OPEN p_result FOR
-        SELECT 
-            r.room_id,
-            r.room_name,
-            r.room_type,
-            b.building_id,
-            b.building_name
-        FROM Room r
-        JOIN Building b ON r.building_id = b.building_id
-        WHERE r.room_type = p_room_type
-          AND r.building_id = p_building_id
-        ORDER BY r.room_name;
+--     OPEN p_result FOR
+--         SELECT 
+--             r.room_id,
+--             r.room_name,
+--             r.room_type,
+--             b.building_id,
+--             b.building_name
+--         FROM Room r
+--         JOIN Building b ON r.building_id = b.building_id
+--         WHERE r.room_type = p_room_type
+--           AND r.building_id = p_building_id
+--         ORDER BY r.room_name;
         
-END ViewRoomsByTypeBuilding;
-/
+-- END ViewRoomsByTypeBuilding;
+-- /
 
-CREATE OR REPLACE PROCEDURE ViewRoomsByTypeName(
-    p_room_type IN Room.room_type%TYPE,
-    p_room_name IN Room.room_name%TYPE,
-    p_result    OUT SYS_REFCURSOR
-)
-AS
-BEGIN
-    /*
-    PURPOSE: Search rooms by type and name (partial match)
-    INPUT: Room type + Room name (can be partial)
-    OUTPUT: Rooms matching type and containing search term in name
-    */
+-- CREATE OR REPLACE PROCEDURE ViewRoomsByTypeName(
+--     p_room_type IN Room.room_type%TYPE,
+--     p_room_name IN Room.room_name%TYPE,
+--     p_result    OUT SYS_REFCURSOR
+-- )
+-- AS
+-- BEGIN
+--     /*
+--     PURPOSE: Search rooms by type and name (partial match)
+--     INPUT: Room type + Room name (can be partial)
+--     OUTPUT: Rooms matching type and containing search term in name
+--     */
     
-    OPEN p_result FOR
-        SELECT 
-            r.room_id,
-            r.room_name,
-            r.room_type,
-            b.building_id,
-            b.building_name
-        FROM Room r
-        JOIN Building b ON r.building_id = b.building_id
-        WHERE r.room_type = p_room_type
-          AND UPPER(r.room_name) LIKE '%' || UPPER(p_room_name) || '%'
-        ORDER BY b.building_name, r.room_name;
+--     OPEN p_result FOR
+--         SELECT 
+--             r.room_id,
+--             r.room_name,
+--             r.room_type,
+--             b.building_id,
+--             b.building_name
+--         FROM Room r
+--         JOIN Building b ON r.building_id = b.building_id
+--         WHERE r.room_type = p_room_type
+--           AND UPPER(r.room_name) LIKE '%' || UPPER(p_room_name) || '%'
+--         ORDER BY b.building_name, r.room_name;
         
-END ViewRoomsByTypeName;
-/
+-- END ViewRoomsByTypeName;
+-- /
 
-CREATE OR REPLACE PROCEDURE ViewAllRooms(
-    p_result OUT SYS_REFCURSOR
-)
-AS
-BEGIN
-    /*
-    PURPOSE: View all rooms regardless of type
-    OUTPUT: All rooms in system
-    */
+-- CREATE OR REPLACE PROCEDURE ViewAllRooms(
+--     p_result OUT SYS_REFCURSOR
+-- )
+-- AS
+-- BEGIN
+--     /*
+--     PURPOSE: View all rooms regardless of type
+--     OUTPUT: All rooms in system
+--     */
     
-    OPEN p_result FOR
-        SELECT 
-            r.room_id,
-            r.room_name,
-            r.room_type,
-            b.building_id,
-            b.building_name
-        FROM Room r
-        JOIN Building b ON r.building_id = b.building_id
-        ORDER BY b.building_name, r.room_type, r.room_name;
+--     OPEN p_result FOR
+--         SELECT 
+--             r.room_id,
+--             r.room_name,
+--             r.room_type,
+--             b.building_id,
+--             b.building_name
+--         FROM Room r
+--         JOIN Building b ON r.building_id = b.building_id
+--         ORDER BY b.building_name, r.room_type, r.room_name;
         
-END ViewAllRooms;
-/
+-- END ViewAllRooms;
+-- /
 
 -- ============================================
 -- BUILDING MANAGEMENT PROCEDURES
@@ -1648,13 +1595,11 @@ BEGIN
     p_success := 0;
     p_message := 'Booking failed';
     
-    -- Validate that booking date is today or in the future (not in the past)
     IF TRUNC(p_date_of_booking) < TRUNC(v_current_date) THEN
         p_message := 'Booking date cannot be in the past. Please select today or a future date.';
         RETURN;
     END IF;
     
-    -- Convert time strings to datetime
     v_start_datetime := TO_TIMESTAMP(TO_CHAR(p_date_of_booking, 'YYYY-MM-DD') || ' ' || p_start_time, 'YYYY-MM-DD HH24:MI');
     v_end_datetime := TO_TIMESTAMP(TO_CHAR(p_date_of_booking, 'YYYY-MM-DD') || ' ' || p_end_time, 'YYYY-MM-DD HH24:MI');
     v_day_of_week := UPPER(TO_CHAR(p_date_of_booking, 'DAY'));  -- Get day of week

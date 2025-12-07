@@ -1,4 +1,3 @@
-// src/features/auth/components/LoginForm.js
 import React, { useState } from 'react';
 import Button from '../../../shared/components/ui/Button';
 import UserTypeSelector from './UserTypeSelector';
@@ -12,7 +11,7 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
   const [userType, setUserType] = useState('student');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '', // Can be email OR phone
     password: '',
     fullName: '',
     confirmPassword: '',
@@ -33,15 +32,21 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
     }
   };
 
-  // Email validation function
-  const validateEmailDomain = (email, isRegistration = false) => {
+  // Validation function for BOTH email and phone
+  const validateIdentifier = (identifier, isRegistration = false) => {
     if (isRegistration && userType === 'student') {
       // Student registration: only @khi.iba.edu.pk
-      return email.endsWith('@khi.iba.edu.pk');
-    } else {
-      // Login: both domains allowed
-      return email.endsWith('@iba.edu.pk') || email.endsWith('@khi.iba.edu.pk');
+      return identifier.endsWith('@khi.iba.edu.pk');
     }
+    
+    // For login: allow email, phone, or any identifier
+    // Check if it's an email (has @) - then validate domain
+    if (identifier.includes('@')) {
+      return identifier.endsWith('@iba.edu.pk') || identifier.endsWith('@khi.iba.edu.pk');
+    }
+    
+    // If it's a phone number (no @), accept it
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -49,12 +54,12 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
     setIsLoading(true);
 
     try {
-      // Validate email domain FIRST
-      if (!validateEmailDomain(formData.email, isNewUser)) {
+      // Validate identifier
+      if (!validateIdentifier(formData.identifier, isNewUser)) {
         if (isNewUser && userType === 'student') {
           alert('Student registration requires @khi.iba.edu.pk email address');
         } else {
-          alert('Please use @iba.edu.pk or @khi.iba.edu.pk email address');
+          alert('For login: Please use @iba.edu.pk, @khi.iba.edu.pk email OR phone number');
         }
         setIsLoading(false);
         return;
@@ -91,7 +96,7 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
           body: JSON.stringify({
             erp: parseInt(formData.studentId),
             name: formData.fullName,
-            email: formData.email,
+            identifier: formData.identifier,
             password: formData.password,
             role: userType
           })
@@ -108,75 +113,72 @@ const LoginForm = ({ onLogin, onUserTypeChange }) => {
         }
 
       } else {
-        // LOGIN LOGIC - Always use backend API
-        // LOGIN LOGIC - Always use backend API
-      // =======================
-// LOGIN LOGIC (FIXED)
-// =======================
-const response = await fetch('http://localhost:5000/api/auth/login', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    email: formData.email,
-    password: formData.password,
-    userType: userType
-  })
-});
+        // LOGIN LOGIC
+        console.log("Sending login request:", {
+          identifier: formData.identifier,
+          userType: userType
+        });
 
-const result = await response.json();
-console.log("LOGIN RESPONSE:", result);
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.identifier, // Send as "email" field (backend expects email parameter)
+            password: formData.password,
+            userType: userType
+          })
+        });
 
-if (response.ok && result.success) {
+        const result = await response.json();
+        console.log("LOGIN RESPONSE:", result);
 
-  const role = result.role;          // ProgramOffice / BuildingIncharge
-  const type = result.userType;      // admin / student
-  const backendUser = result.user;   // returned user object
+        if (response.ok && result.success) {
+          const role = result.role;          // ProgramOffice / BuildingIncharge
+          const type = result.userType;      // admin / student
+          const backendUser = result.user;   // returned user object
 
-  // =============================
-  // STORE USER PROPERLY (THE FIX)
-  // =============================
-  let userToStore = null;
+          // =============================
+          // STORE USER PROPERLY
+          // =============================
+          let userToStore = null;
 
-  if (role === "BuildingIncharge") {
-    userToStore = {
-      Incharge_ID: backendUser.INCHARGE_ID,
-      name: backendUser.NAME,
-      email: backendUser.EMAIL,
-      role: "BI"
-    };
-  }
+          if (role === "BuildingIncharge") {
+            userToStore = {
+              Incharge_ID: backendUser.INCHARGE_ID,
+              name: backendUser.NAME,
+              email: backendUser.EMAIL,
+              role: "BI"
+            };
+          }
+          else if (role === "ProgramOffice") {
+            userToStore = {
+              ProgramOffice_ID: backendUser.PROGRAM_OFFICE_ID,
+              name: backendUser.NAME,
+              email: backendUser.EMAIL,
+              role: "PO"
+            };
+          }
+          else {
+            // student user
+            userToStore = backendUser;
+          }
 
-  else if (role === "ProgramOffice") {
-    userToStore = {
-      ProgramOffice_ID: backendUser.PROGRAM_OFFICE_ID,
-      name: backendUser.NAME,
-      email: backendUser.EMAIL,
-      role: "PO"
-    };
-  }
+          // SAVE TO LOCAL STORAGE
+          localStorage.setItem("user", JSON.stringify(userToStore));
+          localStorage.setItem("role", role);
 
-  else {
-    // student user
-    userToStore = backendUser;
-  }
+          console.log("SAVED USER =", userToStore);
 
-  // SAVE TO LOCAL STORAGE
-  localStorage.setItem("user", JSON.stringify(userToStore));
-  localStorage.setItem("role", role);
+          // call parent
+          if (onLogin) {
+            onLogin(type, role, backendUser);
+          }
 
-  console.log("SAVED USER =", userToStore);
-
-  // call parent
-  if (onLogin) {
-    onLogin(type, role, backendUser);
-  }
-
-} else {
-  alert(`❌ ${result.error || 'Login failed'}`);
-}
-
+        } else {
+          alert(`❌ ${result.error || 'Login failed'}`);
+        }
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -195,7 +197,7 @@ if (response.ok && result.success) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
+          email: formData.identifier,
           verificationCode: otp
         })
       });
@@ -206,9 +208,9 @@ if (response.ok && result.success) {
         alert('Registration completed successfully! You can now login.');
         setShowOtp(false);
         setIsNewUser(false); // Switch to login mode
-        // Clear form but keep email for login
+        // Clear form but keep identifier for login
         setFormData({
-          email: formData.email,
+          identifier: formData.identifier,
           password: '',
           fullName: '',
           confirmPassword: '',
@@ -233,7 +235,7 @@ if (response.ok && result.success) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email
+          email: formData.identifier
         })
       });
 
@@ -255,9 +257,8 @@ if (response.ok && result.success) {
     setShowForgotPassword(true);
   };
 
-  const handlePasswordReset = (email) => {
-    // For now, just show a message
-    alert(`📧 Password reset would be sent to ${email}\n\n(Feature not implemented yet)`);
+  const handlePasswordReset = (identifier) => {
+    alert(`📧 Password reset would be sent to ${identifier}\n\n(Feature not implemented yet)`);
   };
 
   const handleBackToLogin = () => {
@@ -279,7 +280,7 @@ if (response.ok && result.success) {
   if (showOtp) {
     return (
       <OTPScreen 
-        email={formData.email}
+        email={formData.identifier}
         onVerify={handleOtpVerify}
         onResendOtp={handleResendOtp}
         onBack={handleBackToLogin}
@@ -348,14 +349,14 @@ if (response.ok && result.success) {
         {/* Common fields for both login and register */}
         <div className="form-group">
           <input 
-            type="email" 
-            name="email"
+            type="text"
+            name="identifier"
             placeholder={
               isNewUser && userType === 'student' 
                 ? "Email (@khi.iba.edu.pk only)" 
-                : "Email (@iba.edu.pk or @khi.iba.edu.pk)"
+                : "Email (@iba.edu.pk or @khi.iba.edu.pk) OR Phone"
             } 
-            value={formData.email}
+            value={formData.identifier}
             onChange={handleInputChange}
             required 
             disabled={isLoading}
@@ -426,7 +427,7 @@ if (response.ok && result.success) {
                 setIsNewUser(!isNewUser);
                 // Clear form when switching modes
                 setFormData({
-                  email: '',
+                  identifier: '',
                   password: '',
                   fullName: '',
                   confirmPassword: '',
@@ -441,24 +442,7 @@ if (response.ok && result.success) {
         </p>
       </div>
 
-      {/* Admin credentials reminder */}
-      {!isNewUser && userType === 'admin' && (
-        <div style={{ 
-          marginTop: '15px', 
-          padding: '10px', 
-          background: '#f8f9fa', 
-          borderRadius: '6px',
-          fontSize: '12px',
-          color: '#666',
-          textAlign: 'left'
-        }}>
-          <strong>Admin Credentials:</strong><br/>
-          • Program Office: programoffice@iba.edu.pk / IBAProgram2024<br/>
-          • Building Incharge: buildingincharge@iba.edu.pk / IBABuilding2024
-        </div>
-      )}
-
-      {/* Email domain reminder */}
+      {/* Email/Phone reminder */}
       <div style={{ 
         marginTop: '10px', 
         padding: '8px', 
@@ -470,7 +454,7 @@ if (response.ok && result.success) {
       }}>
         {isNewUser && userType === 'student' 
           ? '📧 Student registration: @khi.iba.edu.pk only'
-          : '📧 Login: @iba.edu.pk or @khi.iba.edu.pk'
+          : '📧 Login: @iba.edu.pk or @khi.iba.edu.pk OR 📱 Phone number'
         }
       </div>
     </div>
