@@ -202,11 +202,27 @@ router.post('/post', async (req, res) => {
 /* ============================================================
    5) DELETE ANNOUNCEMENT
 ============================================================ */
+/* ============================================================
+   5) DELETE ANNOUNCEMENT
+============================================================ */
 router.post('/delete', async (req, res) => {
   let connection;
 
   try {
     const { announcement_id, erp } = req.body;
+
+    // ADD DEBUG LOGGING
+    console.log('DELETE REQUEST BODY:', req.body);
+    console.log('Announcement ID:', announcement_id, 'Type:', typeof announcement_id);
+    console.log('ERP:', erp, 'Type:', typeof erp);
+
+    if (!announcement_id || !erp) {
+      console.log('Missing parameters - announcement_id:', announcement_id, 'erp:', erp);
+      return res.status(400).json({
+        success: false,
+        error: "Announcement ID and ERP are required"
+      });
+    }
 
     connection = await getConnection();
 
@@ -221,6 +237,8 @@ router.post('/delete', async (req, res) => {
         message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
       }
     );
+
+    console.log('Delete procedure result:', result.outBinds);
 
     if (result.outBinds.success === 1) {
       return res.json({ success: true, message: result.outBinds.message });

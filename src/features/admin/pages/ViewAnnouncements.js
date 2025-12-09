@@ -18,8 +18,6 @@ const ViewAnnouncements = () => {
   const loadInchargeAnnouncements = async () => {
     try {
       setLoading(true);
-      console.log('👷 Loading incharge announcements...');
-      
       // Get logged in incharge
       const userStr = localStorage.getItem('user');
       if (!userStr) {
@@ -44,16 +42,11 @@ const ViewAnnouncements = () => {
       }
       
       const data = await response.json();
-      console.log('🔍 API Response:', data);
-      
       if (data.success && data.data && Array.isArray(data.data)) {
-        console.log(`✅ Found ${data.data.length} announcements by you`);
-        
         // SIMPLE FIX: Just use the data as-is if it looks okay
         const transformedData = data.data.map(item => {
           // If item has announcement_id (lowercase), use it as-is
           if (item && typeof item === 'object' && item.announcement_id !== undefined) {
-            console.log('✅ Item has lowercase keys, using as-is:', item);
             return {
               announcement_id: item.announcement_id || 0,
               title: item.title || 'No Title',
@@ -65,7 +58,6 @@ const ViewAnnouncements = () => {
           
           // If item has ANNOUNCEMENT_ID (uppercase), convert to lowercase
           if (item && typeof item === 'object' && item.ANNOUNCEMENT_ID !== undefined) {
-            console.log('✅ Item has UPPERCASE keys, converting:', item);
             return {
               announcement_id: item.ANNOUNCEMENT_ID || 0,
               title: item.TITLE || 'No Title',
@@ -77,7 +69,6 @@ const ViewAnnouncements = () => {
           
           // If it's an array (unlikely since your backend transforms it)
           if (Array.isArray(item) && item.length >= 5) {
-            console.log('✅ Item is array:', item);
             return {
               announcement_id: item[0] || 0,
               title: item[1] || 'No Title',
@@ -87,8 +78,6 @@ const ViewAnnouncements = () => {
             };
           }
           
-          // Fallback
-          console.log('❌ Unknown item format:', item);
           return {
             announcement_id: 0,
             title: 'Error loading',
@@ -98,14 +87,13 @@ const ViewAnnouncements = () => {
           };
         });
         
-        console.log('✅ Transformed data:', transformedData);
         setMyAnnouncements(transformedData);
       } else {
-        console.error('❌ Invalid data structure:', data);
+        console.error('Invalid data structure:', data);
         setError('Failed to fetch your announcements');
       }
     } catch (err) {
-      console.error('❌ Error fetching incharge announcements:', err);
+      console.error('Error fetching incharge announcements:', err);
       setError('Network error. Please check your connection.');
     } finally {
       setLoading(false);
@@ -136,7 +124,6 @@ const ViewAnnouncements = () => {
         return;
       }
 
-      console.log('📢 Posting new announcement...');
       const response = await fetch('http://localhost:5000/api/announcements/post', {
         method: 'POST',
         headers: {

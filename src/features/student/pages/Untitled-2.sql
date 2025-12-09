@@ -215,6 +215,19 @@ CREATE TABLE Announcement (
     -- Foreign Key
     FOREIGN KEY (ERP) REFERENCES User_Table(ERP) ON DELETE CASCADE
 );
+
+SELECT constraint_name 
+FROM user_constraints 
+WHERE table_name = 'ANNOUNCEMENT' 
+AND constraint_type = 'R';
+
+ALTER TABLE Announcement DROP CONSTRAINT SYS_C007667;
+
+ALTER TABLE Announcement 
+ADD CONSTRAINT fk_announcement_incharge 
+FOREIGN KEY (ERP) REFERENCES Incharge(incharge_id) 
+ON DELETE CASCADE;
+
 /*
 Purpose: System announcements and notifications
 Note: Can be posted by any user (admin/student/incharge)
@@ -724,9 +737,9 @@ BEGIN
     p_success := 0;
     p_message := '';
     
-    -- Check booking exists and belongs to student
-    SELECT COUNT(*), status, booking_date + (start_time - TRUNC(start_time))
-    INTO v_booking_exists, v_current_status, v_start_datetime
+    -- First check if booking exists and belongs to student
+    SELECT COUNT(*) 
+    INTO v_booking_exists
     FROM Booking
     WHERE booking_id = p_booking_id 
       AND ERP = p_erp;
@@ -735,6 +748,19 @@ BEGIN
         p_message := 'Booking not found or does not belong to you';
         RETURN;
     END IF;
+    
+    -- Now get booking details separately
+    BEGIN
+        SELECT status, booking_date + (start_time - TRUNC(start_time))
+        INTO v_current_status, v_start_datetime
+        FROM Booking
+        WHERE booking_id = p_booking_id 
+          AND ERP = p_erp;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_message := 'Booking details not found';
+            RETURN;
+    END;
     
     -- Check status is 'Approved'
     IF v_current_status != 'Approved' THEN
@@ -751,7 +777,8 @@ BEGIN
     -- Cancel the booking
     UPDATE Booking
     SET status = 'Cancelled'
-    WHERE booking_id = p_booking_id;
+    WHERE booking_id = p_booking_id
+      AND ERP = p_erp;
     
     COMMIT;
     
@@ -763,7 +790,7 @@ EXCEPTION
         ROLLBACK;
         p_success := 0;
         p_message := 'Error cancelling booking: ' || SQLERRM;
-END;
+END CancelBookingByStudent;
 /
 
 CREATE OR REPLACE PROCEDURE ShowReservationHistoryForPO(
@@ -2543,3 +2570,100 @@ VALUES (30002, 'Hi and Bye',
 commit;
 
 select * from announcement;
+
+CREATE OR REPLACE PROCEDURE RejectBooking(
+    p_booking_id  IN Booking.booking_id%TYPE,
+    p_role        IN VARCHAR2,
+    p_user_erp    IN NUMBER DEFAULT NULL,  -- For BI verification
+    p_success     OUT NUMBER,
+    p_message     OUT VARCHAR2
+)
+AS
+    v_room_type   Room.room_type%TYPE;
+    v_status      Booking.status%TYPE;
+    v_building_id Building.building_id%TYPE;
+    v_room_building_id Room.building_id%TYPE;
+BEGIN
+    p_success := 0;
+    p_message := '';
+    
+    -- Get booking details
+    BEGIN
+        SELECT r.room_type, b.status, r.building_id
+        INTO v_room_type, v_status, v_room_building_id
+        FROM Booking b
+        JOIN Room r ON b.room_id = r.room_id
+        WHERE b.booking_id = p_booking_id;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_message := 'Booking not found';
+            RETURN;
+    END;
+    
+    -- Check status is 'Approved'
+    IF v_status != 'Approved' THEN
+        p_message := 'Only Approved bookings can be rejected';
+        RETURN;
+    END IF;
+    
+    IF p_role = 'ProgramOffice' THEN
+        -- PO can only reject classrooms
+        IF v_room_type != 'CLASSROOM' THEN
+            p_message := 'Only classroom bookings can be rejected by Program Office';
+            RETURN;
+        END IF;
+        
+    ELSIF p_role = 'BuildingIncharge' THEN
+        -- BI can only reject breakouts in their building
+        IF v_room_type != 'BREAKOUT' THEN
+            p_message := 'Only breakout room bookings can be rejected by Building Incharge';
+            RETURN;
+        END IF;
+        
+        -- Verify BI is incharge of this building
+        IF p_user_erp IS NULL THEN
+            p_message := 'Building Incharge ERP required';
+            RETURN;
+        END IF;
+        
+        BEGIN
+            SELECT building_id INTO v_building_id
+            FROM Incharge
+            WHERE incharge_id = p_user_erp;
+            
+            IF v_room_building_id != v_building_id THEN
+                p_message := 'Cannot reject bookings from other buildings';
+                RETURN;
+            END IF;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                p_message := 'Building Incharge not found or not assigned to a building';
+                RETURN;
+        END;
+        
+    ELSE
+        p_message := 'Invalid role. Only ProgramOffice or BuildingIncharge can reject bookings';
+        RETURN;
+    END IF;
+    
+    -- Reject the booking
+    UPDATE Booking
+    SET status = 'Rejected'
+    WHERE booking_id = p_booking_id;
+    
+    COMMIT;
+    
+    p_success := 1;
+    p_message := 'Booking rejected successfully';
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        p_success := 0;
+        p_message := 'Error rejecting booking: ' || SQLERRM;
+END RejectBooking;
+/
+
+select s.*, b.* from user_table s join booking b on s.erp = b.erp;
+
+select * from announcements;
