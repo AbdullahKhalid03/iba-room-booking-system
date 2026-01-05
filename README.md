@@ -1,3 +1,13 @@
+## IBA Room Booking System
+
+This project was developed as a team-based full-stack semester project.
+
+Contributors:
+- Abdullah Khalid
+- Kashish Anil Kumar
+- Muskan Pawan
+Original repository: https://github.com/Musknn/iba-room-booking-system.git
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
